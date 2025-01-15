@@ -19,6 +19,8 @@ $CC $CFLAGS -Wl,-Tkernel.ld -Wl,-Map=kernel.map -o kernel.elf \
 # llvm-objdump -d kernel.elf
 # You can also check the addresses of functions/variables using
 # llvm-nm kernel.elf
+# Convert address to a file location
+# llvm-addr2line -e kernel.elf 8020015e
 
 # Start QEMU
 # -machine virt: Start a virt machine. You can check other supported machines with the -machine '?' option.
