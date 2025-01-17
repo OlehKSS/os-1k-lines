@@ -7,6 +7,7 @@ typedef uint32_t size_t;
 
 // Addresses of symbols defined in the linker script 
 extern char __bss[], __bss_end[], __stack_top[];
+extern char __free_ram[], __free_ram_end[];
 
 // Call OpenSBI via the ecall instruction
 struct sbiret sbi_call(long arg0, long arg1, long arg2, long arg3, long arg4,
@@ -107,6 +108,21 @@ void kernel_entry(void) {
     );
 }
 
+// Implement Bump allocator or Linear allocator, assuming that deallocation is not necessary.
+// For deallocation, use a bitmap-based algorithm or an algorithm called the buddy system.
+paddr_t alloc_pages(uint32_t n) {
+    static paddr_t next_paddr = (paddr_t) __free_ram;
+    paddr_t paddr = next_paddr;
+    next_paddr += n * PAGE_SIZE;
+
+    if (next_paddr > (paddr_t) __free_ram_end) {
+        PANIC("Out of memory");
+    }
+
+    memset((void *) paddr, 0, n * PAGE_SIZE);
+    return paddr;
+}
+
 void handle_trap(struct trap_frame *f) {
     uint32_t scause = READ_CSR(scause);
     uint32_t stval = READ_CSR(stval);
@@ -126,7 +142,12 @@ void kernel_main(void) {
     WRITE_CSR(stvec, (uint32_t) kernel_entry);
 
     printf("\n\nHello %s\n", "World!");
-    printf("1 + 2 = %d, %x\n", 1 + 2, 0x1234abcd);
+
+    printf("Free memory range: 0x%x - 0x%x\n", (paddr_t) __free_ram, (paddr_t) __free_ram_end);
+    paddr_t paddr0 = alloc_pages(2);
+    paddr_t paddr1 = alloc_pages(1);
+    printf("alloc_pages test: paddr0=0x%x\n", paddr0);
+    printf("alloc_pages test: paddr1=0x%x\n", paddr1);
 
     for (;;) {
         __asm__ __volatile__("wfi");

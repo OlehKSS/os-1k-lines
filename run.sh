@@ -31,3 +31,6 @@ $CC $CFLAGS -Wl,-Tkernel.ld -Wl,-Map=kernel.map -o kernel.elf \
 # --no-reboot: If the virtual machine crashes, stop the emulator without rebooting (useful for debugging).
 $QEMU -machine virt -bios default -nographic -serial mon:stdio --no-reboot \
  -kernel kernel.elf # Load the kernel
+
+# To get more information about the CPU registers
+# - info registers
