@@ -5,6 +5,14 @@ struct sbiret {
     long error;
     long value;
 };
+
+struct process {
+    uint32_t pid; // Process ID
+    vaddr_t sp; // Stack pointer
+    uint8_t state;  // Process state: PROC_UNUSED or PROC_RUNNABLE
+    uint8_t stack[2 * PAGE_SIZE]; // Kernel stack
+};
+
 // The outer loop is used to combine multiple statements into a macro
 #define PANIC(fmt, ...) \
     do { \
@@ -58,3 +66,5 @@ struct trap_frame {
         uint32_t __tmp = (value);                                              \
         __asm__ __volatile__("csrw " #reg ", %0" ::"r"(__tmp));                \
     } while (0)
+
+void putchar(char ch);
