@@ -8,8 +8,11 @@ typedef uint32_t size_t;
 // Addresses of symbols defined in the linker script 
 extern char __bss[], __bss_end[], __stack_top[];
 extern char __free_ram[], __free_ram_end[];
+extern char __kernel_base[];
 
 struct process process_list[PROCS_MAX];
+
+void man_page(uint32_t *table1, uint32_t vaddr, paddr_t paddr, uint32_t flags);
 
 // Call OpenSBI via the ecall instruction
 struct sbiret sbi_call(long arg0, long arg1, long arg2, long arg3, long arg4,
@@ -206,9 +209,18 @@ struct process *create_process(uint32_t pc) {
     *--sp = 0;                      // s0
     *--sp = (uint32_t) pc;          // ra
 
+    // Map kernel pages.
+    uint32_t *page_table = (uint32_t *) alloc_pages(1);
+    for (paddr_t paddr = (paddr_t) __kernel_base;
+         paddr < (paddr_t) __free_ram_end;
+         paddr += PAGE_SIZE) {
+            man_page(page_table, paddr, paddr, PAGE_R | PAGE_W | PAGE_X);
+    }
+
     // Initialize fields.
     proc->pid = i + 1;
     proc->state = PROC_RUNNABLE;
+    proc->page_table = page_table;
     proc->sp = (uint32_t) sp;
 
     return proc;
@@ -241,9 +253,13 @@ void yield(void) {
     }
 
     __asm__ __volatile__ (
+        "sfence.vma\n"
+        "csrw satp, %[satp]\n"
+        "sfence.vma\n"
         "csrw sscratch, %[sscratch]\n"
         :
-        : [sscratch] "r" ((uint32_t) &next->stack[sizeof(next->stack)])
+        : [satp] "r" (SATP_SV32 | ((uint32_t) next->page_table / PAGE_SIZE)), 
+          [sscratch] "r" ((uint32_t) &next->stack[sizeof(next->stack)])
     );
 
     // Context switch
@@ -326,4 +342,34 @@ void boot(void) {
         :
         : [stack_top] "r" (__stack_top) // Pass the stack top address as %[stack_top]
     );
+}
+
+// Prepare the second-level page table and fill the page table entry in the second level
+// Virtual address is split into vpn[1] (1st level), vpn[0] (2nd level), offset
+// @param table1: The first-level page table
+// @param vaddr: The virtual address
+// @param paddr: The physical address
+// @param flags: The page table entry flags
+void man_page(uint32_t *table1, uint32_t vaddr, paddr_t paddr, uint32_t flags) {
+    if (!is_aligned(vaddr, PAGE_SIZE)) {
+        PANIC("unaligned virtual address %x", vaddr);
+    }
+
+    if (!is_aligned(paddr, PAGE_SIZE)) {
+        PANIC("unaligned physical address %x", paddr);
+    }
+
+    uint32_t vpn1 = (vaddr >> 22) & 0x3ff;
+
+    if ((table1[vpn1] & PAGE_V) == 0) {
+        // Create the non-existent 2nd level page table.
+        uint32_t pt_paddr = alloc_pages(1);
+        // Divide paddr by PAGE_SIZE because the entry should contain the physical page number, not the physical address itself
+        table1[vpn1] = ((pt_paddr / PAGE_SIZE) << 10) | PAGE_V;
+    }
+
+    // Set 2nd level page table entry to map the physical page.
+    uint32_t vpn0 = (vaddr >> 12) & 0x3ff;
+    uint32_t *table0 = (uint32_t *) ((table1[vpn1] >> 10) * PAGE_SIZE);
+    table0[vpn0] = ((paddr / PAGE_SIZE) << 10) | flags | PAGE_V;
 }

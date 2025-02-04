@@ -10,6 +10,7 @@ struct process {
     int pid; // Process ID
     vaddr_t sp; // Stack pointer
     uint8_t state;  // Process state: PROC_UNUSED or PROC_RUNNABLE
+    uint32_t *page_table; // Pointer to the 1st level page table
     uint8_t stack[2 * PAGE_SIZE]; // Kernel stack
 };
 
@@ -68,3 +69,12 @@ struct trap_frame {
     } while (0)
 
 void putchar(char ch);
+
+// SATP_SV32 is a single bit in the satp register which indicates "enable paging in Sv32 mode"
+#define SATP_SV32 (1u << 31)
+// Page flags to be set in page table entries
+#define PAGE_V (1 << 0) // "Valid" bit (entry is enabled)
+#define PAGE_R (1 << 1) // Readable
+#define PAGE_W (1 << 2) // Writable
+#define PAGE_X (1 << 3) // Executable
+#define PAGE_U (1 << 4) // User (accessible in user mode)

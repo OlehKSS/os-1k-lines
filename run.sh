@@ -34,3 +34,6 @@ $QEMU -machine virt -bios default -nographic -serial mon:stdio --no-reboot \
 
 # To get more information about the CPU registers
 # - info registers
+
+# Check memory mapping
+# - info mem
