@@ -69,6 +69,7 @@ struct trap_frame {
     } while (0)
 
 void putchar(char ch);
+long getchar(void);
 
 // SATP_SV32 is a single bit in the satp register which indicates "enable paging in Sv32 mode"
 #define SATP_SV32 (1u << 31)
@@ -83,3 +84,5 @@ void putchar(char ch);
 // starting address defined in `user.ld`.
 #define USER_BASE 0x1000000
 #define SSTATUS_SPIE (1 << 5)
+
+#define SCAUSE_ECALL 8

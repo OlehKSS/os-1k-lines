@@ -320,16 +320,59 @@ void proc_b_entry(void) {
     }
 }
 
+void handle_syscall(struct trap_frame *f) {
+    switch (f->a3)
+    {
+    case SYS_PUTCHAR:
+        putchar(f->a0);
+        break;
+    case SYS_GETCHAR:
+        while (1) {
+            long ch = getchar();
+            if (ch >= 0) {
+                f->a0 = ch;
+                break;
+            }
+
+            yield();
+        }
+        break;
+    case SYS_EXIT:
+        printf("process %d exited\n", current_proc->pid);
+        current_proc->state = PROC_EXITED;
+        yield();
+        PANIC("unreachable");
+        break;
+    default:
+        PANIC("unexpected syscall a3=%x\n", f->a3);
+    }
+}
+
 void handle_trap(struct trap_frame *f) {
     uint32_t scause = READ_CSR(scause);
     uint32_t stval = READ_CSR(stval);
     uint32_t user_pc = READ_CSR(sepc);
 
-    PANIC("unexpected trap scause=%x, stval=%x, sepc=%x\n", scause, stval, user_pc);
+    if (scause == SCAUSE_ECALL) {
+        handle_syscall(f);
+        // We add the size of ecall instaction (4) to the value of sepc (program counter),
+        // in order to move over the exception cause and avoid infinite loop
+        // upon return from the exception handler
+        user_pc += 4;
+    } else {
+        PANIC("unexpected trap scause=%x, stval=%x, sepc=%x\n", scause, stval, user_pc);
+    }
+
+    WRITE_CSR(sepc, user_pc);
 }
 
 void putchar(char ch) {
     sbi_call(ch, 0, 0, 0, 0, 0, 0, 1/* Console Putchar */);
+}
+
+long getchar(void) {
+    struct sbiret ret = sbi_call(0, 0, 0, 0, 0, 0, 0, 2);
+    return ret.error;
 }
 
 void kernel_main(void) {
