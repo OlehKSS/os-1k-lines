@@ -45,3 +45,9 @@ $QEMU -machine virt -bios default -nographic -serial mon:stdio --no-reboot \
 
 # Check memory mapping
 # - info mem
+
+# Display the contents of physical memory
+# - xp /32b 0x80265000
+
+# Check binary contents
+# - hexdump -C shell.bin 

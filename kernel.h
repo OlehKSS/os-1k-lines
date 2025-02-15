@@ -78,3 +78,8 @@ void putchar(char ch);
 #define PAGE_W (1 << 2) // Writable
 #define PAGE_X (1 << 3) // Executable
 #define PAGE_U (1 << 4) // User (accessible in user mode)
+
+// The base virtual address of an application image. This needs to match the
+// starting address defined in `user.ld`.
+#define USER_BASE 0x1000000
+#define SSTATUS_SPIE (1 << 5)
