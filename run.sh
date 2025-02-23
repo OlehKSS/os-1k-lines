@@ -38,7 +38,10 @@ $CC $CFLAGS -Wl,-Tkernel.ld -Wl,-Map=kernel.map -o kernel.elf \
 #  Specifying mon: allows switching to the QEMU monitor by pressing Ctrl+A then C.
 # --no-reboot: If the virtual machine crashes, stop the emulator without rebooting (useful for debugging).
 $QEMU -machine virt -bios default -nographic -serial mon:stdio --no-reboot \
- -kernel kernel.elf # Load the kernel
+    -d unimp,guest_errors,int,cpu_reset -D qemu.log \
+    -drive id=drive0,file=lorem.txt,format=raw,if=none \
+    -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 \
+    -kernel kernel.elf # Load the kernel
 
 # To get more information about the CPU registers
 # - info registers
